@@ -4,13 +4,14 @@ import { Middleware, MidRequest } from "./middleware.js";
 import { parseCSV, parseImportJSON } from "./export.js";
 import { todosToCSV, todosToJSON } from "./export.js";
 import { WebhookManager } from "./webhooks.js";
+import { RequestLogger } from "./logger.js";
 
 function json(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
 }
 
-export function createRouter(store: TodoStore, startTime: number = Date.now(), webhookManager?: WebhookManager): Middleware {
+export function createRouter(store: TodoStore, startTime: number = Date.now(), webhookManager?: WebhookManager, logger?: RequestLogger): Middleware {
   return (req: MidRequest, res: ServerResponse, _next) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
     const path = url.pathname;
@@ -134,6 +135,9 @@ export function createRouter(store: TodoStore, startTime: number = Date.now(), w
         return;
       }
       json(res, 200, { unregistered: true });
+    } else if (path === "/admin/logs" && req.method === "GET") {
+      const limit = parseInt(url.searchParams.get("limit") ?? "50", 10);
+      json(res, 200, logger ? logger.getRecent(limit) : []);
     } else {
       json(res, 404, { error: "not found" });
     }
