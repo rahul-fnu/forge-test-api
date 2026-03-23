@@ -48,6 +48,21 @@ export function router(req: IncomingMessage, res: ServerResponse, store: TodoSto
       }
       json(res, 200, todo);
     });
+  } else if (path.startsWith("/todos/") && req.method === "PUT") {
+    const id = path.split("/")[2];
+    readBody(req).then((body) => {
+      const { title, completed } = JSON.parse(body);
+      if (!title) {
+        json(res, 400, { error: "title is required" });
+        return;
+      }
+      const todo = store.replace(id, title, completed ?? false);
+      if (!todo) {
+        json(res, 404, { error: "not found" });
+        return;
+      }
+      json(res, 200, todo);
+    });
   } else if (path.startsWith("/todos/") && req.method === "DELETE") {
     const id = path.split("/")[2];
     if (!store.delete(id)) {

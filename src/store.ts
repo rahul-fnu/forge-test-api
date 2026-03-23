@@ -37,6 +37,14 @@ export class TodoStore {
     return todo;
   }
 
+  replace(id: string, title: string, completed: boolean = false): Todo | undefined {
+    const todo = this.todos.get(id);
+    if (!todo) return undefined;
+    todo.title = title;
+    todo.completed = completed;
+    return todo;
+  }
+
   delete(id: string): boolean {
     return this.todos.delete(id);
   }
