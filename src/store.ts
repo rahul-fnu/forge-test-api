@@ -40,4 +40,9 @@ export class TodoStore {
   delete(id: string): boolean {
     return this.todos.delete(id);
   }
+
+  search(q: string): Todo[] {
+    const lower = q.toLowerCase();
+    return [...this.todos.values()].filter((t) => t.title.toLowerCase().includes(lower));
+  }
 }

@@ -18,7 +18,14 @@ export function router(req: IncomingMessage, res: ServerResponse, store: TodoSto
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
   const path = url.pathname;
 
-  if (path === "/todos" && req.method === "GET") {
+  if (path === "/todos/search" && req.method === "GET") {
+    const q = url.searchParams.get("q");
+    if (!q) {
+      json(res, 400, { error: "q parameter is required" });
+      return;
+    }
+    json(res, 200, store.search(q));
+  } else if (path === "/todos" && req.method === "GET") {
     json(res, 200, store.getAll());
   } else if (path === "/todos" && req.method === "POST") {
     readBody(req).then((body) => {

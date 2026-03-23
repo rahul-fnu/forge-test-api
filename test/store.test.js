@@ -31,4 +31,19 @@ describe("TodoStore", () => {
     assert.ok(store.delete(todo.id));
     assert.strictEqual(store.getById(todo.id), undefined);
   });
+
+  it("searches todos by title substring (case-insensitive)", () => {
+    const store = new TodoStore();
+    store.create("Buy milk");
+    store.create("Buy eggs");
+    store.create("Read book");
+    const results = store.search("buy");
+    assert.strictEqual(results.length, 2);
+  });
+
+  it("returns empty array when search has no matches", () => {
+    const store = new TodoStore();
+    store.create("Buy milk");
+    assert.strictEqual(store.search("xyz").length, 0);
+  });
 });
