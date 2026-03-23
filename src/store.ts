@@ -1,10 +1,6 @@
-export interface Todo {
-  id: string;
-  title: string;
-  completed: boolean;
-  createdAt: string;
-  dueDate?: string;
-}
+import { Todo } from "./types.js";
+
+export type { Todo };
 
 export class TodoStore {
   private todos: Map<string, Todo> = new Map();
