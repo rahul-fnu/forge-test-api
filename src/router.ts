@@ -12,7 +12,9 @@ export function createRouter(store: TodoStore): Middleware {
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
     const path = url.pathname;
 
-    if (path === "/todos" && req.method === "GET") {
+    if (path === "/health" && req.method === "GET") {
+      json(res, 200, { status: "ok" });
+    } else if (path === "/todos" && req.method === "GET") {
       if (url.searchParams.get("overdue") === "true") {
         json(res, 200, store.getOverdue());
         return;
