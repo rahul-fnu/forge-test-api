@@ -23,6 +23,13 @@ export function router(req: IncomingMessage, res: ServerResponse, store: TodoSto
       json(res, 200, store.getOverdue());
       return;
     }
+    const limitParam = url.searchParams.get("limit");
+    if (limitParam) {
+      const limit = parseInt(limitParam, 10);
+      const cursor = url.searchParams.get("cursor") ?? undefined;
+      json(res, 200, store.getPage(limit, cursor));
+      return;
+    }
     json(res, 200, store.getAll());
   } else if (path === "/todos" && req.method === "POST") {
     readBody(req).then((body) => {

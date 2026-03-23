@@ -55,6 +55,22 @@ export class TodoStore {
     return todo;
   }
 
+  getPage(limit: number, cursor?: string): { data: Todo[]; cursor: string | null; hasMore: boolean } {
+    const all = [...this.todos.values()];
+    let startIndex = 0;
+    if (cursor) {
+      const cursorIndex = all.findIndex((t) => t.id === cursor);
+      if (cursorIndex === -1) {
+        return { data: [], cursor: null, hasMore: false };
+      }
+      startIndex = cursorIndex + 1;
+    }
+    const page = all.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + limit < all.length;
+    const newCursor = page.length > 0 ? page[page.length - 1].id : null;
+    return { data: page, cursor: newCursor, hasMore };
+  }
+
   delete(id: string): boolean {
     return this.todos.delete(id);
   }
