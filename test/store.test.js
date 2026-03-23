@@ -69,6 +69,34 @@ describe("TodoStore", () => {
     assert.strictEqual(store.getById(todo.id)?.dueDate, dueDate);
   });
 
+  it("bulk creates multiple todos", () => {
+    const store = new TodoStore();
+    const todos = store.bulkCreate(["A", "B", "C"]);
+    assert.strictEqual(todos.length, 3);
+    assert.strictEqual(todos[0].title, "A");
+    assert.strictEqual(todos[1].title, "B");
+    assert.strictEqual(todos[2].title, "C");
+    assert.strictEqual(store.getAll().length, 3);
+  });
+
+  it("bulk deletes multiple todos", () => {
+    const store = new TodoStore();
+    const a = store.create("A");
+    const b = store.create("B");
+    const result = store.bulkDelete([a.id, b.id]);
+    assert.strictEqual(result.deleted, 2);
+    assert.deepStrictEqual(result.notFound, []);
+    assert.strictEqual(store.getAll().length, 0);
+  });
+
+  it("bulk delete reports not found ids", () => {
+    const store = new TodoStore();
+    const a = store.create("A");
+    const result = store.bulkDelete([a.id, "999", "888"]);
+    assert.strictEqual(result.deleted, 1);
+    assert.deepStrictEqual(result.notFound, ["999", "888"]);
+  });
+
   it("returns overdue todos", () => {
     const store = new TodoStore();
     store.create("Past due", "2020-01-01T00:00:00.000Z");
