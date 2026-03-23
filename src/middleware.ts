@@ -49,7 +49,7 @@ export const errorHandler: Middleware = async (req, res, next) => {
 };
 
 export const bodyParser: Middleware = (req, res, next) => {
-  if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH") {
+  if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE") {
     let body = "";
     req.on("data", (chunk) => (body += chunk));
     req.on("end", () => {
