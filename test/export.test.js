@@ -3,7 +3,7 @@ import assert from "node:assert";
 import http from "node:http";
 import { TodoStore } from "../dist/store.js";
 import { createRouter } from "../dist/router.js";
-import { todosToCSV, todosToJSON } from "../dist/export.js";
+import { todosToCSV, todosToJSON, parseCSV, parseImportJSON } from "../dist/export.js";
 
 function makeRequest(server, path) {
   return new Promise((resolve, reject) => {
@@ -25,10 +25,30 @@ function makeRequest(server, path) {
 function createTestServer(store) {
   const handler = createRouter(store);
   const server = http.createServer((req, res) => {
-    req.body = "";
-    handler(req, res, () => {});
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      req.body = body;
+      handler(req, res, () => {});
+    });
   });
   return server;
+}
+
+function postRequest(server, path, body, contentType) {
+  return new Promise((resolve, reject) => {
+    const port = server.address().port;
+    const headers = { "Content-Type": contentType };
+    if (body) headers["Content-Length"] = Buffer.byteLength(body);
+    const req = http.request({ hostname: "localhost", port, path, method: "POST", headers }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => resolve({ status: res.statusCode, body: data ? JSON.parse(data) : null }));
+    });
+    req.on("error", reject);
+    if (body) req.write(body);
+    req.end();
+  });
 }
 
 describe("todosToCSV", () => {
@@ -114,5 +134,88 @@ describe("GET /todos/export", () => {
     assert.strictEqual(status, 400);
     const parsed = JSON.parse(body);
     assert.strictEqual(parsed.error, "unknown format");
+  });
+});
+
+describe("POST /todos/import", () => {
+  let server;
+
+  afterEach(() => {
+    if (server) return new Promise((resolve) => server.close(resolve));
+  });
+
+  it("imports todos from CSV", async () => {
+    const store = new TodoStore();
+    server = createTestServer(store);
+    await new Promise((resolve) => server.listen(0, resolve));
+
+    const csv = "id,title,completed,createdAt\n1,Buy milk,false,2026-01-01\n2,Walk dog,false,2026-01-02";
+    const { status, body } = await postRequest(server, "/todos/import", csv, "text/csv");
+    assert.strictEqual(status, 200);
+    assert.strictEqual(body.imported, 2);
+    assert.deepStrictEqual(body.errors, []);
+    assert.strictEqual(store.getAll().length, 2);
+  });
+
+  it("imports todos from JSON", async () => {
+    const store = new TodoStore();
+    server = createTestServer(store);
+    await new Promise((resolve) => server.listen(0, resolve));
+
+    const jsonBody = JSON.stringify([{ title: "Task A" }, { title: "Task B" }]);
+    const { status, body } = await postRequest(server, "/todos/import", jsonBody, "application/json");
+    assert.strictEqual(status, 200);
+    assert.strictEqual(body.imported, 2);
+    assert.deepStrictEqual(body.errors, []);
+    assert.strictEqual(store.getAll().length, 2);
+  });
+
+  it("handles mixed valid/invalid rows in CSV", async () => {
+    const store = new TodoStore();
+    server = createTestServer(store);
+    await new Promise((resolve) => server.listen(0, resolve));
+
+    const csv = "id,title,completed,createdAt\n1,Buy milk,false,2026-01-01\n2,,false,2026-01-02\n3,Walk dog,false,2026-01-03";
+    const { status, body } = await postRequest(server, "/todos/import", csv, "text/csv");
+    assert.strictEqual(status, 200);
+    assert.strictEqual(body.imported, 2);
+    assert.strictEqual(body.errors.length, 1);
+    assert.ok(body.errors[0].includes("empty title"));
+    assert.strictEqual(store.getAll().length, 2);
+  });
+
+  it("handles mixed valid/invalid items in JSON", async () => {
+    const store = new TodoStore();
+    server = createTestServer(store);
+    await new Promise((resolve) => server.listen(0, resolve));
+
+    const jsonBody = JSON.stringify([{ title: "Task A" }, { title: "" }, { title: "Task C" }]);
+    const { status, body } = await postRequest(server, "/todos/import", jsonBody, "application/json");
+    assert.strictEqual(status, 200);
+    assert.strictEqual(body.imported, 2);
+    assert.strictEqual(body.errors.length, 1);
+    assert.ok(body.errors[0].includes("empty title"));
+  });
+
+  it("handles empty CSV input", async () => {
+    const store = new TodoStore();
+    server = createTestServer(store);
+    await new Promise((resolve) => server.listen(0, resolve));
+
+    const { status, body } = await postRequest(server, "/todos/import", "", "text/csv");
+    assert.strictEqual(status, 200);
+    assert.strictEqual(body.imported, 0);
+    assert.strictEqual(store.getAll().length, 0);
+  });
+
+  it("handles empty JSON array input", async () => {
+    const store = new TodoStore();
+    server = createTestServer(store);
+    await new Promise((resolve) => server.listen(0, resolve));
+
+    const { status, body } = await postRequest(server, "/todos/import", "[]", "application/json");
+    assert.strictEqual(status, 200);
+    assert.strictEqual(body.imported, 0);
+    assert.strictEqual(store.getAll().length, 0);
   });
 });
