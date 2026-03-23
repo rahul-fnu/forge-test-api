@@ -19,7 +19,9 @@ export function router(req: IncomingMessage, res: ServerResponse, store: TodoSto
   const path = url.pathname;
 
   if (path === "/todos" && req.method === "GET") {
-    json(res, 200, store.getAll());
+    const completedParam = url.searchParams.get("completed");
+    const completed = completedParam === "true" ? true : completedParam === "false" ? false : undefined;
+    json(res, 200, store.getAll(completed));
   } else if (path === "/todos" && req.method === "POST") {
     readBody(req).then((body) => {
       const { title } = JSON.parse(body);

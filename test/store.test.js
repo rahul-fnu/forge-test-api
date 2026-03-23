@@ -25,6 +25,34 @@ describe("TodoStore", () => {
     assert.strictEqual(store.getById(todo.id)?.completed, true);
   });
 
+  it("filters by completed=true", () => {
+    const store = new TodoStore();
+    store.create("A");
+    const b = store.create("B");
+    store.update(b.id, { completed: true });
+    const result = store.getAll(true);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].title, "B");
+  });
+
+  it("filters by completed=false", () => {
+    const store = new TodoStore();
+    store.create("A");
+    const b = store.create("B");
+    store.update(b.id, { completed: true });
+    const result = store.getAll(false);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].title, "A");
+  });
+
+  it("returns all todos when no filter is provided", () => {
+    const store = new TodoStore();
+    store.create("A");
+    const b = store.create("B");
+    store.update(b.id, { completed: true });
+    assert.strictEqual(store.getAll().length, 2);
+  });
+
   it("deletes a todo", () => {
     const store = new TodoStore();
     const todo = store.create("Test");

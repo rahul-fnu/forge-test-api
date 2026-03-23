@@ -21,8 +21,10 @@ export class TodoStore {
     return todo;
   }
 
-  getAll(): Todo[] {
-    return [...this.todos.values()];
+  getAll(completed?: boolean): Todo[] {
+    const all = [...this.todos.values()];
+    if (completed === undefined) return all;
+    return all.filter((t) => t.completed === completed);
   }
 
   getById(id: string): Todo | undefined {
