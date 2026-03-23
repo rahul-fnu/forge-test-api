@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 
 export interface MidRequest extends IncomingMessage {
   body?: string;
+  apiKey?: string;
 }
 
 export type NextFn = () => Promise<void>;
