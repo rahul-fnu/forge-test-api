@@ -7,6 +7,7 @@ export type WebhookEvent =
 
 export class WebhookManager {
   private urls = new Set<string>();
+  private _notificationCount = 0;
 
   register(url: string): void {
     this.urls.add(url);
@@ -19,6 +20,7 @@ export class WebhookManager {
   notify(event: WebhookEvent, data: unknown): void {
     const payload = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
     for (const url of this.urls) {
+      this._notificationCount++;
       fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -29,5 +31,9 @@ export class WebhookManager {
 
   get registeredUrls(): string[] {
     return [...this.urls];
+  }
+
+  get notificationCount(): number {
+    return this._notificationCount;
   }
 }
