@@ -31,4 +31,23 @@ describe("TodoStore", () => {
     assert.ok(store.delete(todo.id));
     assert.strictEqual(store.getById(todo.id), undefined);
   });
+
+  it("returns zeros for stats when empty", () => {
+    const store = new TodoStore();
+    const stats = store.stats();
+    assert.deepStrictEqual(stats, { total: 0, completed: 0, pending: 0, completionRate: 0 });
+  });
+
+  it("returns correct stats with mixed todos", () => {
+    const store = new TodoStore();
+    store.create("A");
+    const b = store.create("B");
+    store.create("C");
+    store.update(b.id, { completed: true });
+    const stats = store.stats();
+    assert.strictEqual(stats.total, 3);
+    assert.strictEqual(stats.completed, 1);
+    assert.strictEqual(stats.pending, 2);
+    assert.strictEqual(stats.completionRate, 33.33);
+  });
 });

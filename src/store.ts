@@ -40,4 +40,12 @@ export class TodoStore {
   delete(id: string): boolean {
     return this.todos.delete(id);
   }
+
+  stats(): { total: number; completed: number; pending: number; completionRate: number } {
+    const total = this.todos.size;
+    const completed = [...this.todos.values()].filter((t) => t.completed).length;
+    const pending = total - completed;
+    const completionRate = total === 0 ? 0 : Math.round((completed / total) * 10000) / 100;
+    return { total, completed, pending, completionRate };
+  }
 }
