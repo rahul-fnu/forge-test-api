@@ -54,4 +54,21 @@ export class TodoStore {
   delete(id: string): boolean {
     return this.todos.delete(id);
   }
+
+  bulkCreate(titles: string[]): Todo[] {
+    return titles.map((title) => this.create(title));
+  }
+
+  bulkDelete(ids: string[]): { deleted: number; notFound: string[] } {
+    let deleted = 0;
+    const notFound: string[] = [];
+    for (const id of ids) {
+      if (this.todos.delete(id)) {
+        deleted++;
+      } else {
+        notFound.push(id);
+      }
+    }
+    return { deleted, notFound };
+  }
 }
