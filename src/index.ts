@@ -6,8 +6,9 @@ import { authMiddleware } from "./auth.js";
 
 const store = new TodoStore();
 const port = parseInt(process.env.PORT ?? "3000");
+const startTime = Date.now();
 
-const app = compose(requestId, timing, errorHandler, authMiddleware, bodyParser, createRouter(store));
+const app = compose(requestId, timing, errorHandler, authMiddleware, bodyParser, createRouter(store, startTime));
 
 const server = createServer(app);
 
