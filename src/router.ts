@@ -1,7 +1,6 @@
 import { ServerResponse } from "node:http";
 import { TodoStore } from "./store.js";
 import { Middleware, MidRequest } from "./middleware.js";
-import { todosToCSV, todosToJSON } from "./export.js";
 
 function json(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -33,24 +32,25 @@ export function createRouter(store: TodoStore, startTime: number = Date.now()): 
         return;
       }
       json(res, 201, store.create(title, dueDate));
-    } else if (path === "/todos/export" && req.method === "GET") {
-      const format = url.searchParams.get("format") ?? "json";
-      const todos = store.getAll();
-      if (format === "csv") {
-        res.writeHead(200, {
-          "Content-Type": "text/csv",
-          "Content-Disposition": 'attachment; filename="todos.csv"',
-        });
-        res.end(todosToCSV(todos));
-      } else if (format === "json") {
-        res.writeHead(200, {
-          "Content-Type": "application/json",
-          "Content-Disposition": 'attachment; filename="todos.json"',
-        });
-        res.end(todosToJSON(todos));
-      } else {
-        json(res, 400, { error: "unknown format" });
+    } else if (path === "/todos/bulk" && req.method === "POST") {
+      const { todos } = JSON.parse(req.body ?? "{}");
+      if (!Array.isArray(todos) || todos.length === 0) {
+        json(res, 400, { error: "todos array is required and must not be empty" });
+        return;
       }
+      const titles = todos.map((t: { title?: string }) => t.title).filter(Boolean) as string[];
+      if (titles.length === 0) {
+        json(res, 400, { error: "todos array is required and must not be empty" });
+        return;
+      }
+      json(res, 201, store.bulkCreate(titles));
+    } else if (path === "/todos/bulk" && req.method === "DELETE") {
+      const { ids } = JSON.parse(req.body ?? "{}");
+      if (!Array.isArray(ids) || ids.length === 0) {
+        json(res, 400, { error: "ids array is required and must not be empty" });
+        return;
+      }
+      json(res, 200, store.bulkDelete(ids));
     } else if (path.startsWith("/todos/") && req.method === "GET") {
       const id = path.split("/")[2];
       const todo = store.getById(id);
