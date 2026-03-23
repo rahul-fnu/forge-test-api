@@ -53,4 +53,32 @@ describe("TodoStore", () => {
     assert.ok(store.delete(todo.id));
     assert.strictEqual(store.getById(todo.id), undefined);
   });
+
+  it("creates a todo with a due date", () => {
+    const store = new TodoStore();
+    const dueDate = "2026-12-31T00:00:00.000Z";
+    const todo = store.create("With due date", dueDate);
+    assert.strictEqual(todo.dueDate, dueDate);
+  });
+
+  it("updates dueDate on a todo", () => {
+    const store = new TodoStore();
+    const todo = store.create("Test");
+    const dueDate = "2026-06-01T00:00:00.000Z";
+    store.update(todo.id, { dueDate });
+    assert.strictEqual(store.getById(todo.id)?.dueDate, dueDate);
+  });
+
+  it("returns overdue todos", () => {
+    const store = new TodoStore();
+    store.create("Past due", "2020-01-01T00:00:00.000Z");
+    store.create("Future due", "2099-01-01T00:00:00.000Z");
+    store.create("No due date");
+    const completed = store.create("Completed past due", "2020-01-01T00:00:00.000Z");
+    store.update(completed.id, { completed: true });
+
+    const overdue = store.getOverdue();
+    assert.strictEqual(overdue.length, 1);
+    assert.strictEqual(overdue[0].title, "Past due");
+  });
 });

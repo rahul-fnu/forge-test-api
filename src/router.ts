@@ -19,15 +19,19 @@ export function router(req: IncomingMessage, res: ServerResponse, store: TodoSto
   const path = url.pathname;
 
   if (path === "/todos" && req.method === "GET") {
+    if (url.searchParams.get("overdue") === "true") {
+      json(res, 200, store.getOverdue());
+      return;
+    }
     json(res, 200, store.getAll());
   } else if (path === "/todos" && req.method === "POST") {
     readBody(req).then((body) => {
-      const { title } = JSON.parse(body);
+      const { title, dueDate } = JSON.parse(body);
       if (!title) {
         json(res, 400, { error: "title is required" });
         return;
       }
-      json(res, 201, store.create(title));
+      json(res, 201, store.create(title, dueDate));
     });
   } else if (path.startsWith("/todos/") && req.method === "GET") {
     const id = path.split("/")[2];
