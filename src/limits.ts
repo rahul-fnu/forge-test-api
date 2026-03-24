@@ -10,9 +10,9 @@ export const bodyLimit: Middleware = (req, res, next) => {
   }
   const contentLength = parseInt(req.headers["content-length"] ?? "0", 10);
   if (contentLength > MAX_BODY_BYTES) {
-    req.resume();
     res.writeHead(413, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Payload Too Large" }));
+    req.destroy();
     return;
   }
   let received = 0;
@@ -22,11 +22,11 @@ export const bodyLimit: Middleware = (req, res, next) => {
       received += (args[0] as Buffer).length;
       if (received > MAX_BODY_BYTES) {
         req.emit = origEmit;
-        req.resume();
         if (!res.headersSent) {
           res.writeHead(413, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Payload Too Large" }));
         }
+        req.destroy();
         return false;
       }
     }
