@@ -46,6 +46,14 @@ export function loggingMiddleware(logger: RequestLogger): Middleware {
     let error: string | undefined;
     let bytesWritten = 0;
 
+    const originalWrite = res.write.bind(res);
+    res.write = function (chunk: any, ...args: any[]) {
+      if (chunk) {
+        bytesWritten += typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.length;
+      }
+      return originalWrite(chunk, ...args);
+    } as typeof res.write;
+
     const originalEnd = res.end.bind(res);
     res.end = function (chunk?: any, ...args: any[]) {
       if (chunk) {

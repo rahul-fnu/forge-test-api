@@ -25,9 +25,12 @@ export class RequestRecorder {
     const id = randomUUID();
     const method = req.method ?? "GET";
     const path = (req.url ?? "/").split("?")[0];
+    const sensitiveHeaders = new Set(["authorization", "cookie", "set-cookie"]);
     const headers: Record<string, string | string[] | undefined> = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      headers[key] = value;
+      if (!sensitiveHeaders.has(key.toLowerCase())) {
+        headers[key] = value;
+      }
     }
     const body = req.body;
 
