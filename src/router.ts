@@ -5,14 +5,15 @@ import { parseCSV, parseImportJSON } from "./export.js";
 import { todosToCSV, todosToJSON } from "./export.js";
 import { WebhookManager } from "./webhooks.js";
 import { RequestLogger } from "./logger.js";
+import { RequestRecorder } from "./replay.js";
 
 function json(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
 }
 
-export function createRouter(store: TodoStore, startTime: number = Date.now(), webhookManager?: WebhookManager, logger?: RequestLogger): Middleware {
-  return (req: MidRequest, res: ServerResponse, _next) => {
+export function createRouter(store: TodoStore, startTime: number = Date.now(), webhookManager?: WebhookManager, logger?: RequestLogger, recorder?: RequestRecorder): Middleware {
+  return async (req: MidRequest, res: ServerResponse, _next) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
     const path = url.pathname;
 
@@ -138,6 +139,54 @@ export function createRouter(store: TodoStore, startTime: number = Date.now(), w
     } else if (path === "/admin/logs" && req.method === "GET") {
       const limit = parseInt(url.searchParams.get("limit") ?? "50", 10);
       json(res, 200, logger ? logger.getRecent(limit) : []);
+    } else if (path === "/debug/requests" && req.method === "GET") {
+      const limit = parseInt(url.searchParams.get("limit") ?? "50", 10);
+      const records = recorder ? recorder.listRecorded(limit) : [];
+      json(res, 200, records.map((r) => ({ id: r.id, method: r.method, path: r.path, status: r.responseStatus, timestamp: r.timestamp })));
+    } else if (path.startsWith("/debug/requests/") && req.method === "GET") {
+      const id = path.split("/")[3];
+      const record = recorder?.getRecorded(id);
+      if (!record) {
+        json(res, 404, { error: "not found" });
+        return;
+      }
+      json(res, 200, record);
+    } else if (path.startsWith("/debug/replay/") && req.method === "POST") {
+      const id = path.split("/")[3];
+      const record = recorder?.replay(id);
+      if (!record) {
+        json(res, 404, { error: "not found" });
+        return;
+      }
+      const replayReq = {
+        method: record.method,
+        url: record.path,
+        headers: record.headers,
+        body: record.body,
+      } as MidRequest;
+      const chunks: string[] = [];
+      let replayStatus = 200;
+      const mockRes = new ServerResponse(replayReq);
+      const origWriteHead = mockRes.writeHead.bind(mockRes);
+      mockRes.writeHead = function (statusCode: number, ...args: any[]) {
+        replayStatus = statusCode;
+        return origWriteHead(statusCode, ...args);
+      } as typeof mockRes.writeHead;
+      const origEnd = mockRes.end.bind(mockRes);
+      mockRes.end = function (chunk?: any, encoding?: any, cb?: any) {
+        if (chunk) chunks.push(typeof chunk === "string" ? chunk : chunk.toString());
+        return origEnd(chunk, encoding, cb);
+      } as typeof mockRes.end;
+      const innerRouter = createRouter(store, startTime, webhookManager, logger, recorder);
+      await innerRouter(replayReq, mockRes, async () => {});
+      let replayBody: unknown;
+      try { replayBody = JSON.parse(chunks.join("")); } catch { replayBody = chunks.join(""); }
+      let originalBody: unknown;
+      try { originalBody = JSON.parse(record.responseBody); } catch { originalBody = record.responseBody; }
+      json(res, 200, {
+        original: { status: record.responseStatus, body: originalBody },
+        replayed: { status: replayStatus, body: replayBody },
+      });
     } else {
       json(res, 404, { error: "not found" });
     }
