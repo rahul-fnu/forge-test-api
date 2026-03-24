@@ -5,6 +5,7 @@ import { parseCSV, parseImportJSON } from "./export.js";
 import { todosToCSV, todosToJSON } from "./export.js";
 import { WebhookManager } from "./webhooks.js";
 import { RequestLogger } from "./logger.js";
+import { generateETag, checkConditional } from "./etag.js";
 
 function json(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -24,11 +25,15 @@ export function createRouter(store: TodoStore, startTime: number = Date.now(), w
         timestamp: new Date().toISOString(),
       });
     } else if (path === "/todos" && req.method === "GET") {
-      if (url.searchParams.get("overdue") === "true") {
-        json(res, 200, store.getOverdue());
+      const data = url.searchParams.get("overdue") === "true" ? store.getOverdue() : store.getAll();
+      const etag = generateETag(data);
+      if (checkConditional(req, etag)) {
+        res.writeHead(304);
+        res.end();
         return;
       }
-      json(res, 200, store.getAll());
+      res.setHeader("ETag", etag);
+      json(res, 200, data);
     } else if (path === "/todos" && req.method === "POST") {
       const { title, dueDate } = JSON.parse(req.body ?? "{}");
       if (!title) {
@@ -88,6 +93,13 @@ export function createRouter(store: TodoStore, startTime: number = Date.now(), w
         json(res, 404, { error: "not found" });
         return;
       }
+      const etag = generateETag(todo);
+      if (checkConditional(req, etag)) {
+        res.writeHead(304);
+        res.end();
+        return;
+      }
+      res.setHeader("ETag", etag);
       json(res, 200, todo);
     } else if (path.startsWith("/todos/") && req.method === "PATCH") {
       const id = path.split("/")[2];
